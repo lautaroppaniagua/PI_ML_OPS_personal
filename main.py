@@ -2,18 +2,35 @@ import pandas as pd
 import os
 from fastapi import FastAPI
 from data_processing import games, user_items, user_reviews
-import uvicorn
+from recommender import Recommender
 from NLP import *
 import nltk
+import ssl
+
+try:
+    _create_unverified_https_context = ssl._create_unverified_context
+except AttributeError:
+    pass
+else:
+    ssl._create_default_https_context = _create_unverified_https_context
 
 nltk.download('punkt')
 nltk.download('stopwords')
+
+#Inicializacion NLP
 
 all_reviews = extract_reviews(user_reviews)
 nlp_languages = ['spanish','english','russian','indonesian']
 extra_sp = ['game','get','play']
 nlp_model = NLP_Model(all_reviews['review'],all_reviews['recommend'],nlp_languages, extra_sp)
 nlp_model.fit_values()
+
+#Inicializacion recomendador
+
+features = ['genres','price','developer']
+recommender = Recommender(games)
+recommender.fit_values(features)
+
 
 
 app = FastAPI()
@@ -150,4 +167,5 @@ def sentiment_analysis(empresa_desarrolladora: str):
         total_count[sentiment_result] += 1
         
     return total_count
+            
             

@@ -8,8 +8,6 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.linear_model import LogisticRegression
 wordnet_lemmatize = WordNetLemmatizer()
 
-nltk.download('punkt')
-nltk.download('stopwords')
 
 class NLP_Model:
     
@@ -35,7 +33,7 @@ class NLP_Model:
         matriz = self.count_vec.fit_transform(lemm_reviews)
         x = matriz.toarray()
         y = self.label_values
-        self.log = LogisticRegression()
+        self.log = LogisticRegression(max_iter=1000)
         self.log.fit(x,y)
         
     def predict(self, text):
