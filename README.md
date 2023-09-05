@@ -29,6 +29,4 @@ En este proyecto tomamos el lugar de un *Data Scientist* en Steam, realizamos al
     pip install -r requirements.txt
     ```
     
-    ### Aclaraciones
-    
-    El proyecto posee una separacion entre los modelos de recomendacion y el modelo principal debido a un problema de compatibilidad entre ambos que al dia de la fecha limite no se pudo resolver.
+
