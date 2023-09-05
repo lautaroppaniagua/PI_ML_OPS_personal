@@ -2,10 +2,12 @@ import pandas as pd
 import os
 from fastapi import FastAPI
 from data_processing import games, user_items, user_reviews
-from recommender import Recommender
+from recommender import *
 from NLP import *
 import nltk
 import ssl
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 try:
     _create_unverified_https_context = ssl._create_unverified_context
@@ -22,14 +24,18 @@ nltk.download('stopwords')
 all_reviews = extract_reviews(user_reviews)
 nlp_languages = ['spanish','english','russian','indonesian']
 extra_sp = ['game','get','play']
-nlp_model = NLP_Model(all_reviews['review'],all_reviews['recommend'],nlp_languages, extra_sp)
+nlp_model = NLP_Model(list(all_reviews['review']),list(all_reviews['recommend']),nlp_languages, extra_sp)
 nlp_model.fit_values()
 
 #Inicializacion recomendador
 
 features = ['genres','price','developer']
-recommender = Recommender(games)
-recommender.fit_values(features)
+vectorizer = TfidfVectorizer()
+gamesdf = games
+gamesdf = gamesdf[features]
+concatenated_features = gamesdf.apply(lambda row: ' '.join(row.astype(str)), axis=1)
+matriz = vectorizer.fit_transform(concatenated_features)
+#cosine_sim = cosine_similarity(matriz,matriz)
 
 
 
@@ -168,4 +174,15 @@ def sentiment_analysis(empresa_desarrolladora: str):
         
     return total_count
             
-            
+@app.get('/recomendacion_juego')
+def recomendacion_juego(item_id:int):
+    df = gamesdf.reset_index()
+    game_index = df[df[['index']] == game_id].index[0]
+    scores = list(enumerate(cosine_sim[game_index]))
+    scores.sort(key=lambda x: x[1], reverse=True)
+    scores = scores[1:6]
+    indexes = [score[0] for score in scores]
+    recommended_games = df.loc[indexes]
+    recommended_games['affinity'] = [score[1] for score in scores]
+    
+    return list(recommended_games)
