@@ -13,7 +13,3 @@ user_items = pd.read_json('datasets/user_items.json.gzip', compression='gzip')
 #dataframe user_reviews
 
 user_reviews = pd.read_json('datasets/user_reviews.json.gzip', compression='gzip')
-
-#dataframe binarized_games
-
-binarized_games = pd.read_json('datasets/num_games_data.json.gzip', compression='gzip')
