@@ -5,7 +5,9 @@ from data_processing import games, user_items, user_reviews
 from NLP import *
 import nltk
 import ssl
-
+from recommender import *
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 try:
     _create_unverified_https_context = ssl._create_unverified_context
@@ -14,10 +16,10 @@ except AttributeError:
 else:
     ssl._create_default_https_context = _create_unverified_https_context
 
-nltk.download('wordnet')
 nltk.download('averaged_perceptron_tagger')
 nltk.download('punkt')
 nltk.download('stopwords')
+
 
 #Inicializacion NLP
 
@@ -28,15 +30,18 @@ nlp_model = NLP_Model(list(all_reviews['review']),list(all_reviews['recommend'])
 nlp_model.fit_values()
 
 
+
+
+
 app = FastAPI()
 app.title = 'PI_ML_OPS'
 
-@app.get('/userdata')
+@app.get('/userdata/{User_id}')
 def userdata(User_id: str):
     
     try:
         items = pd.DataFrame(*user_items[user_items['user_id'] == User_id]['items'])['item_id'].astype(int)
-        items = games.merge(items, how='inner',left_on='id',right_on='item_id')
+        items = games.merge(items, how='inner',left_index=True,right_on='item_id')
         TotalSpent = items['price'].astype(float).sum()
         TotalItems = items['item_id'].count()
         recomendations = pd.DataFrame(*user_reviews[user_reviews.user_id == User_id].reviews).recommend.value_counts(normalize=True)
@@ -54,7 +59,7 @@ def ConvertDate(date: str):
     except:
         return pd.to_datetime('1678-01-01')     
 
-@app.get('/countreviews')
+@app.get('/countreviews/{FechaInicio}/{FechaFinal}')
 def countreviews(FechaInicio, FechaFinal: str):
     FechaInicio = pd.to_datetime(FechaInicio)
     FechaFinal = pd.to_datetime(FechaFinal)
@@ -77,7 +82,7 @@ def countreviews(FechaInicio, FechaFinal: str):
     except:
         return None
     
-@app.get('/developer')
+@app.get('/developer/{desarrollador}')
 def developer(desarrollador: str):
     developer_games = games[games['developer'] == desarrollador]
     developer_games['year'] = (pd.to_datetime(developer_games['release_date'])).dt.year
@@ -92,7 +97,7 @@ def developer(desarrollador: str):
     
     return result.to_dict()
 
-@app.get('/genre')
+@app.get('/genre/{genero}')
 def genre(genero: str):
     genres_path = 'datasets/genresrank.csv'
     if not os.path.exists(genres_path):
@@ -121,7 +126,7 @@ def genre(genero: str):
         
 
 
-@app.get('/userforgenre')
+@app.get('/userforgenre/{genero}')
 def userforgenre(genero: str):
     SeriesList = []
     genre_games = games.explode('genres')
@@ -145,7 +150,7 @@ def userforgenre(genero: str):
     return MaxHoursUser.to_dict()
     
 
-@app.get('/sentiment_analysis')
+@app.get('/sentiment_analysis/{empresa_desarrolladora}')
 def sentiment_analysis(empresa_desarrolladora: str):
     
     developer_ids = list(games[games['developer']==empresa_desarrolladora].index)
@@ -162,4 +167,30 @@ def sentiment_analysis(empresa_desarrolladora: str):
         total_count[sentiment_result] += 1
         
     return total_count
-            
+
+
+@app.get('/recomendacion_juego/{item_id}')
+def recommendacion_juego(item_id: int):
+    game = recommend_game(item_id)
+    return game['app_name'].to_list()
+    
+@app.get('/recomendacion_usuario/{user_id}')
+def recommend_by_user(user_id: str):
+    user = user_items[user_items['user_id'] == user_id]
+    user_games = pd.DataFrame(*user['items']).sort_values('playtime_forever',ascending=False)
+    user_games = user_games.head(5)
+    games_ids = list(user_games['item_id'].values)
+    games_ids = [int(game_id) for game_id in games_ids]
+    
+    recommended_games = pd.DataFrame()
+    
+    for game_id in games_ids:
+        try:
+            recommended_game = recommend_game(game_id)
+            recommended_games = pd.concat([recommended_games,recommended_game])
+        except:
+            pass
+
+    top_5 = recommended_games.sort_values('affinity', ascending=False).drop_duplicates(subset=['index'],keep='first').head(5)
+    
+    return top_5['app_name'].to_list()
