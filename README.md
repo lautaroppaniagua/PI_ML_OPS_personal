@@ -1,6 +1,6 @@
 # PI ML OPS
 
-## Proyecto individual 1
+## Machine Learning OPS steam
 
 En este proyecto tomamos el lugar de un *Data Scientist* en Steam, realizamos algoritmos de machine learning para procesar las emociones que expresan distintas reviews, y realizar recomendaciones adecuadas al perfil del usuario.
 
